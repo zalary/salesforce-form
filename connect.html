@@ -1,0 +1,29 @@
+<html>
+ <head>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+ </head>
+ <body>
+  <h3>REST API With Javascript</h3>
+  <button id="connect">Connect to the REST API</button>
+  <script type="text/javascript">
+    $(document).ready(function(){
+     $('#connect').click(function(){
+     //The clientId and consumerSecret are the ones from the Connected App
+     var clientId = "xxxx";
+     var consumerSecret = "xxxx";
+     
+     //Authorization endpoint
+     var authEndPoint = "https://login.salesforce.com/services/oauth2/authorize";
+     //response_type must be set to token
+     var responseType = "token";
+     //This is the callback URL from the connected app
+     var redirectURI = "http://localhost:8081";
+     //Construct the URL with the required parameters
+     var requestURL = authEndPoint+'?client_id='+clientId+'&response_type='+responseType+'&redirect_uri='+redirectURI;
+     //redirect the user to the endpoint 
+     window.location = requestURL;
+     });
+  })
+ </script>
+ </body>
+</html>
