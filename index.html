@@ -14,7 +14,7 @@
       src="https://code.jquery.com/jquery-2.2.4.js"
       integrity="sha256-iT6Q9iMJYuQiMWNd9lDyBUStIq/8PuOW33aOqmvFpqI="
       crossorigin="anonymous"></script>
-<script type="text/javascript" src="script.js"></script>
+  <script type="text/javascript" src="script.js"></script>
 
 </head>
 
@@ -218,19 +218,17 @@
 
 <script type="text/javascript">
   $(document).ready(function(){
-    //Get access token.
+    //Get access token (submitted from connect.html)
     //Because the access token is a URL parameter it needs to be decoded
-    const accessToken = decodeURI(getURLParameter('access_token'));
-
-
+    var accessToken = decodeURI(getURLParameter('access_token'));
 
     // Lookup by email
     // services/data/v37.0/parameterizedSearch/?q=Acme&sobject=Contact
     $('button.generic_price_btn').click(function(){
    
-      let contactEmail = $("input[name=email]").val();
-      let accountName = $("input[name=company]").val();
-      let contactName = $("input[name=full_name]").val();
+      var contactEmail = $("input[name=email]").val();
+      var accountName = $("input[name=company]").val();
+      var contactName = $("input[name=full_name]").val();
 
       // alert if any field is blank
       // better validation would be better
@@ -248,8 +246,6 @@
       // 007 and show the pricing
 
       // all of the above is started with the searchForLead call on line 22 of script.js  
-      //lookupContact(contactEmail, contactName, accountName);
-     
       searchForLead(contactEmail, contactName, accountName)
     })
 

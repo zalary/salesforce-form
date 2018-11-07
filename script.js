@@ -22,31 +22,21 @@ function searchForLead(contactEmail, contactName, accountName) {
   contactEmail = contactEmail;
   contactName = contactName;
   accountName = accountName;
-  console.log('lookup contact' + contactEmail);
+  console.log('search for lead ' + contactEmail);
   var appendUrl = "parameterizedSearch/?q=" + contactEmail + "&sobject=Lead&Lead.fields=email";
   submitAjax(accessToken, appendUrl, "GET", null, function(result){
     console.log(result);
     if (result.searchRecords.length > 0) {
       // we want to convert the lead, but it requires a special URL call to an 
       // Apex Class which I got from StackOverflow <3 
-      $.ajax({
-        type: "GET",
-        url : 'https://na59.salesforce.com/services/apexrest/Lead/' + result.searchRecords[0].Id,
-        crossDomain: true,
-        headers : {
-          'Authorization' : 'Bearer '+accessToken,
-          'Content-Type' : 'application/json'
-                    },            
-        success : function(){
-          // Lead successfully converted, let's use lookup to get the details and continue
-          lookup(contactEmail, contactName, accountName);
-        },
-        error: function(response){
-          // Better error handling needed.
-          console.log(response);
-          alert('Sorry, something went wrong with our form.  Contact our sales team at 1-800-888-8888');
-        }
-      }); 
+        convertLead(result, function(result){
+          console.log('set timeout')
+          setTimeout(function(){
+            lookup(contactEmail, contactName, accountName);
+          },  60000)
+      
+        })
+        
     }
     else {
       // no lead was found, let's try to find a contact or account
@@ -60,13 +50,12 @@ function lookup(contactEmail, contactName, accountName) {
   contactEmail = contactEmail;
   contactName = contactName;
   accountName = accountName;
-  console.log('lookup contact' + contactEmail);
+  console.log('lookup contact ' + contactEmail);
   var appendUrl = "parameterizedSearch/?q=" + contactEmail + "&sobject=Contact&Contact.fields=email";
   submitAjax(accessToken, appendUrl, "GET", null, function(result){
     console.log(result);
     if (result.searchRecords.length > 0) {
       // assumes no existing duplicates on contact email field
-        console.log(result);
         var contactId = result.searchRecords[0].Id;
         console.log(contactId);
         getContactAccount(accessToken, contactId, accountName);
@@ -220,6 +209,29 @@ function submitAjax(accessToken, appendUrl, method, requestData, successCallback
                 },
     data: JSON.stringify(requestData),            
     success : function(response){
+      successCallback(response);
+    },
+    error: function(response){
+      // Better error handling needed.
+      console.log(response);
+      alert('Sorry, something went wrong with our form.  Contact our sales team at 1-800-888-8888');
+    }
+  }); 
+
+}
+
+function convertLead(result, successCallback) {
+  $.ajax({
+    type: "GET",
+    url : 'https://na59.salesforce.com/services/apexrest/Lead/' + result.searchRecords[0].Id,
+    crossDomain: true,
+    headers : {
+      'Authorization' : 'Bearer '+accessToken,
+      'Content-Type' : 'application/json'
+                },            
+    success : function(response){
+      // Lead successfully converted, let's use lookup to get the details and continue
+      console.log('lead converted')
       successCallback(response);
     },
     error: function(response){
