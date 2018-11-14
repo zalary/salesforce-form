@@ -22,26 +22,25 @@ function searchForLead(contactEmail, contactName, accountName) {
   contactEmail = contactEmail;
   contactName = contactName;
   accountName = accountName;
+  
   console.log('search for lead ' + contactEmail);
-  var appendUrl = "parameterizedSearch/?q=" + contactEmail + "&sobject=Lead&Lead.fields=email";
+  var appendUrl = "parameterizedSearch/?q=" + contactEmail + "&sobject=Lead&Lead.fields=email,IsConverted";
   submitAjax(accessToken, appendUrl, "GET", null, function(result){
     console.log(result);
-    if (result.searchRecords.length > 0) {
+    if ((result.searchRecords.length > 0) && (result.searchRecords[0].IsConverted == false)) {
       // we want to convert the lead, but it requires a special URL call to an 
       // Apex Class which I got from StackOverflow <3 
         convertLead(result, function(result){
-          console.log('set timeout')
-          setTimeout(function(){
-            lookup(contactEmail, contactName, accountName);
-          },  60000)
-      
-        })
-        
+            console.log('extract accountId and contactId');
+            var getInfo = JSON.parse(result);
+            console.log('create opp and task with info');
+            createOppTask(getInfo.accountId, getInfo.contactId);
+        }) 
     }
     else {
-      // no lead was found, let's try to find a contact or account
+      console.log('do a lookup')
       lookup(contactEmail, contactName, accountName);
-    }  
+    }
   }); 
 }
 
@@ -56,9 +55,11 @@ function lookup(contactEmail, contactName, accountName) {
     console.log(result);
     if (result.searchRecords.length > 0) {
       // assumes no existing duplicates on contact email field
+      // assumes we follow SF convention and do not have contacts unassociated with accounts
+
         var contactId = result.searchRecords[0].Id;
         console.log(contactId);
-        getContactAccount(accessToken, contactId, accountName);
+        getContactAccount(accessToken, contactId);
     }
     else {
       // 003 Look for Existing Account
@@ -70,17 +71,16 @@ function lookup(contactEmail, contactName, accountName) {
         if (result.searchRecords.length > 0) {
           // assumes no existing duplicates on account name field
           var accountId = result.searchRecords[0].Id;
-          console.log('create contact and associate with account');
+          console.log('account exists, create contact and associate with account');
           var contactData = {
               "lastname": contactName,
               "Email": contactEmail,
               "AccountId" : accountId
           };
           submitAjax(accessToken, "sobjects/Contact/", "POST", contactData, function(result){
-            console.log('create contact result');
+            console.log('contact created, get the contactId');
             contactId = result.id;
-            
-            createOppTask(accountId, contactId, accountName); 
+            createOppTask(accountId, contactId); 
           });
         }
         else {
@@ -94,15 +94,14 @@ function lookup(contactEmail, contactName, accountName) {
 }
 
 // 004 Get Contact Account
-function getContactAccount(accessToken, contactId, accountName) {
+function getContactAccount(accessToken, contactId) {
   contactId = contactId;
-  accountName = accountName;
   console.log('get contact account');
   submitAjax(accessToken, "sobjects/Contact/" + contactId, "GET", null, function(result){
     console.log(result);
     var contactAccountId = result.AccountId;
     console.log(contactAccountId);
-    createOppTask(contactAccountId, contactId, accountName); 
+    createOppTask(contactAccountId, contactId); 
   });
 }
 
@@ -148,17 +147,18 @@ function createAccountContact(accountName, contactName, contactEmail) {
 }
 
 // 006 Create Opportunity and Task
-function createOppTask(accountId, contactId, accountName) {
-  accountName = accountName;
-  contactId = contactId;
+function createOppTask(accountId, contactId) {
   console.log('create opportunity and task');
-  console.log('account name: ' + accountName);
   var currentDate = new Date();
   var threeMonths = currentDate.setMonth(currentDate.getMonth() + 3);
   var closeDate = new Date(threeMonths).toISOString().substring(0, 10);
   var oppTask = {
     "allOrNone" : true,
     "compositeRequest" : [{
+        "method" : "GET",
+        "referenceId" : "accountInfo",
+        "url" : "/services/data/v38.0/sobjects/Account/" + accountId
+    },{
         "method" : "POST",
         "url" : "/services/data/v38.0/sobjects/Opportunity",
         "referenceId" : "NewOpportunity",
@@ -166,7 +166,7 @@ function createOppTask(accountId, contactId, accountName) {
             "AccountId" : accountId,
             "Amount" : 599,
             "Description" : "Enterprise opportunity from GoodCo.com pricing page form",
-            "Name" : accountName + ' Enterprise Plan',
+            "Name" : "@{accountInfo.Name} Enterprise Plan",
             "CloseDate" : closeDate,
             "LeadSource": "Website Pricing Page",
             "StageName" : "New"
